@@ -1,0 +1,60 @@
+services:
+  db:
+    image: mysql:8
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-wordpress}
+      MYSQL_USER: ${DB_USER:-wordpress}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-wordpress}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  php:
+    image: wordpress:php8.2-fpm
+    environment:
+      WORDPRESS_DB_HOST: ${DB_HOST:-db}:3306
+      WORDPRESS_DB_USER: ${DB_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD:-wordpress}
+      WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}
+    volumes:
+      - ./wordpress:/var/www/html
+      - ./wp-content:/var/www/html/wp-content
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./wordpress:/var/www/html
+      - ./wp-content:/var/www/html/wp-content
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+
+  wpcli:
+    image: wordpress:cli
+    entrypoint: ["bash","-lc"]
+    working_dir: /var/www/html
+    environment:
+      WORDPRESS_DB_HOST: ${DB_HOST:-db}:3306
+      WORDPRESS_DB_USER: ${DB_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD:-wordpress}
+      WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}
+    volumes:
+      - ./wordpress:/var/www/html
+      - ./wp-content:/var/www/html/wp-content
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
