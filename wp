@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# WP-CLI wrapper (container üzerinden)
+set -euo pipefail
+docker compose run --rm wpcli wp "$@"
